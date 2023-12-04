@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	baseUrl = "localhost:8081"
+	baseUrl = "localhost:3099"
 	createPostfix = "/notes"
 	getPostfix = "/notes/%d"	
 )
@@ -74,8 +75,13 @@ func createNoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getNoteHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("hit get")	
+	
 	noteID := chi.URLParam(r, "id")
 	id, err := parseNoteID(noteID)
+
+	log.Printf("result: %+v", notes.elems)
+	log.Printf("got id %d: ", id)
 
 	if err != nil {
 		http.Error(w, "invalid note id", http.StatusBadRequest)
@@ -112,6 +118,7 @@ func main() {
 	r.Post(createPostfix, createNoteHandler)
 	r.Get(getPostfix, getNoteHandler)
 
+	fmt.Println("Starting http server...")
 	err := http.ListenAndServe(baseUrl, r)
 	if err != nil {
 		log.Fatal(err)
