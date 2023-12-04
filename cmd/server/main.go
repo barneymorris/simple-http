@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -11,31 +10,32 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 const (
-	baseUrl = "localhost:3099"
+	baseUrl       = "localhost:3099"
 	createPostfix = "/notes"
-	getPostfix = "/notes/%d"	
+	getPostfix    = "/notes/{id}"
 )
 
 type NoteInfo struct {
-	Title string `json:"title"`
-	Context string `json:"context"`
-	Author string `json:"author"`
-	IsPublic bool `json:"is_public"`
+	Title    string `json:"title"`
+	Context  string `json:"context"`
+	Author   string `json:"author"`
+	IsPublic bool   `json:"is_public"`
 }
 
 type Note struct {
-	ID int64 `json:"id"`
-	Info NoteInfo `json:"info"`
+	ID        int64     `json:"id"`
+	Info      NoteInfo  `json:"info"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SyncMap struct {
 	elems map[int64]*Note
-	m sync.RWMutex
+	m     sync.RWMutex
 }
 
 var notes = &SyncMap{
@@ -44,9 +44,8 @@ var notes = &SyncMap{
 
 func createNoteHandler(w http.ResponseWriter, r *http.Request) {
 	info := &NoteInfo{}
-
 	if err := json.NewDecoder(r.Body).Decode(info); err != nil {
-		http.Error(w, "failed to decode note data", http.StatusBadRequest)
+		http.Error(w, "Failed to decode note data", http.StatusBadRequest)
 		return
 	}
 
@@ -54,17 +53,16 @@ func createNoteHandler(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 
 	note := &Note{
-		ID: rand.Int63(),
-		Info: *info,
+		ID:        rand.Int63(),
+		Info:      *info,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-
 	if err := json.NewEncoder(w).Encode(note); err != nil {
-		http.Error(w, "failed to encode note data", http.StatusInternalServerError)
+		http.Error(w, "Failed to encode note data", http.StatusInternalServerError)
 		return
 	}
 
@@ -75,16 +73,11 @@ func createNoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getNoteHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("hit get")	
-	
 	noteID := chi.URLParam(r, "id")
 	id, err := parseNoteID(noteID)
-
-	log.Printf("result: %+v", notes.elems)
-	log.Printf("got id %d: ", id)
-
 	if err != nil {
-		http.Error(w, "invalid note id", http.StatusBadRequest)
+		http.Error(w, "Invalid note ID", http.StatusBadRequest)
+		return
 	}
 
 	notes.m.RLock()
@@ -92,13 +85,13 @@ func getNoteHandler(w http.ResponseWriter, r *http.Request) {
 
 	note, ok := notes.elems[id]
 	if !ok {
-		http.Error(w, "note not found", http.StatusNotFound)
+		http.Error(w, "Note not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(note); err != nil {
-		http.Error(w, "failed to encode note data", http.StatusInternalServerError)
+		http.Error(w, "Failed to encode note data", http.StatusInternalServerError)
 		return
 	}
 }
@@ -106,20 +99,20 @@ func getNoteHandler(w http.ResponseWriter, r *http.Request) {
 func parseNoteID(idStr string) (int64, error) {
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	return id, nil
 }
- 
+
 func main() {
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
 
 	r.Post(createPostfix, createNoteHandler)
 	r.Get(getPostfix, getNoteHandler)
 
-	fmt.Println("Starting http server...")
-	err := http.ListenAndServe(baseUrl, r)
+	err := http.ListenAndServe(":3099", r)
 	if err != nil {
 		log.Fatal(err)
 	}

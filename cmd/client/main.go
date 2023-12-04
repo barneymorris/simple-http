@@ -3,13 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+
+	// "errors"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -66,10 +68,7 @@ func createNote() (Note, error) {
 }
 
 func getNote(id int64) (Note, error) {
-	url := fmt.Sprintf(baseUrl+getPostfix, id)
-	log.Printf("url %s", url)
-	
-	resp, err := http.Get(url)
+	resp, err := http.Get(fmt.Sprintf(baseUrl+getPostfix, id))
 	if err != nil {
 		log.Fatal("failed to get note: ", err)
 	}
@@ -77,9 +76,9 @@ func getNote(id int64) (Note, error) {
 	defer resp.Body.Close()
 	
 	if resp.StatusCode == http.StatusNotFound {
-		return Note{}, errors.New("note not found")
+		return Note{}, err
 	}
-
+	
 	if resp.StatusCode != http.StatusOK {
 		return Note{}, errors.New("failed to get note")
 	}
